@@ -40,8 +40,6 @@ pub struct WildcardProfile {
     pub line_count_ranges: Vec<(usize, usize)>,
     /// Ranges of word counts observed in wildcard responses.
     pub word_count_ranges: Vec<(usize, usize)>,
-    /// The range of Shannon entropy observed (currently disabled for performance).
-    pub entropy_range: Option<(f64, f64)>,
     /// The range of HTML tag counts observed in wildcard responses.
     pub html_tag_count_range: Option<(usize, usize)>,
 }
@@ -58,7 +56,6 @@ impl WildcardProfile {
             header_patterns: HashMap::new(),
             line_count_ranges: Vec::new(),
             word_count_ranges: Vec::new(),
-            entropy_range: None,
             html_tag_count_range: None,
         }
     }
@@ -98,7 +95,6 @@ impl WildcardProfile {
         Self::merge_range(&mut self.line_count_ranges, min_line, max_line);
         Self::merge_range(&mut self.word_count_ranges, min_word, max_word);
 
-        self.update_entropy_range(resp.entropy);
         self.update_tag_count_range(resp.html_tag_count);
     }
 
@@ -116,19 +112,6 @@ impl WildcardProfile {
         }
         if !merged {
             ranges.push((min, max));
-        }
-    }
-
-    /// Updates the entropy range with a new value.
-    fn update_entropy_range(&mut self, entropy: f64) {
-        match &mut self.entropy_range {
-            Some((min, max)) => {
-                *min = min.min(entropy);
-                *max = max.max(entropy);
-            }
-            None => {
-                self.entropy_range = Some((entropy, entropy));
-            }
         }
     }
 
@@ -234,7 +217,6 @@ pub struct WildcardSample {
     pub headers: HashMap<String, String>,
     pub line_count: usize,
     pub word_count: usize,
-    pub entropy: f64,
     pub html_tag_count: usize,
 }
 
@@ -261,7 +243,6 @@ impl WildcardSample {
         let (title, error_message) = extract_patterns(body);
         let line_count = body.lines().count();
         let word_count = body.split_whitespace().count();
-        let entropy = calculate_entropy(body);
         let html_tag_count = count_html_tags(body);
 
         Self {
@@ -273,7 +254,6 @@ impl WildcardSample {
             headers: headers.clone(),
             line_count,
             word_count,
-            entropy,
             html_tag_count,
         }
     }
@@ -308,14 +288,6 @@ fn extract_patterns(html: &str) -> (Option<String>, Option<String>) {
         .map(|s| s.to_string());
 
     (title, error_message)
-}
-
-/// Calculates the Shannon entropy of a string.
-fn calculate_entropy(_data: &str) -> f64 {
-    // --- Optimization ---
-    // Entropy calculation is very slow. Returning a constant 0.0 effectively
-    // disables this check for a significant performance gain.
-    0.0
 }
 
 /// Counts the number of HTML tags in a string.
