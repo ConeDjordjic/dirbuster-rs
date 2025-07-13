@@ -147,71 +147,79 @@ impl WildcardProfile {
 
     /// Checks if a given response sample is likely a wildcard based on the profile.
     pub fn is_likely_wildcard(&self, resp: &WildcardSample) -> bool {
-        if self.common_status_codes.contains(&resp.status_code) {
-            return true;
-        }
+        let mut match_count = 0;
+        let mut confidence = 0.0;
 
-        if self
-            .size_ranges
-            .iter()
-            .any(|(min, max)| resp.size >= *min && resp.size <= *max)
-        {
-            return true;
-        }
-
+        // 1. Exact SHA256 match
         if self.sha256_hashes.contains(&resp.sha256) {
-            return true;
+            confidence += 0.9;
         }
 
+        // 2. Title pattern match
         if let Some(title) = &resp.title {
             if self.title_patterns.contains(title) {
-                return true;
+                confidence += 0.7;
+                match_count += 1;
             }
         }
 
+        // 3. Error message pattern match
         if let Some(err) = &resp.error_message {
             if self.error_message_patterns.contains(err) {
-                return true;
+                confidence += 0.8;
+                match_count += 1;
             }
         }
 
-        for (k, v) in &resp.headers {
-            if let Some(values) = self.header_patterns.get(k) {
-                if values.contains(v) {
-                    return true;
-                }
-            }
+        // 4. Size range match
+        let size_match = self
+            .size_ranges
+            .iter()
+            .any(|(min, max)| resp.size >= *min && resp.size <= *max);
+        if size_match {
+            confidence += 0.3;
+            match_count += 1;
         }
 
-        if self
+        // 5. Multiple metrics matching
+        let line_match = self
             .line_count_ranges
             .iter()
-            .any(|(min, max)| resp.line_count >= *min && resp.line_count <= *max)
-        {
-            return true;
-        }
-
-        if self
+            .any(|(min, max)| resp.line_count >= *min && resp.line_count <= *max);
+        let word_match = self
             .word_count_ranges
             .iter()
-            .any(|(min, max)| resp.word_count >= *min && resp.word_count <= *max)
-        {
-            return true;
+            .any(|(min, max)| resp.word_count >= *min && resp.word_count <= *max);
+        let tag_match = if let Some((min, max)) = self.html_tag_count_range {
+            resp.html_tag_count >= min && resp.html_tag_count <= max
+        } else {
+            false
+        };
+
+        if line_match {
+            match_count += 1;
+            confidence += 0.2;
+        }
+        if word_match {
+            match_count += 1;
+            confidence += 0.2;
+        }
+        if tag_match {
+            match_count += 1;
+            confidence += 0.2;
         }
 
-        if let Some((min, max)) = self.entropy_range {
-            if resp.entropy >= min && resp.entropy <= max {
-                return true;
+        // 6. Don't filter based on status code alone for 200 OK responses
+        if resp.status_code == 200 {
+            // For 200 OK, require high confidence or multiple matches
+            confidence >= 0.7 || (match_count >= 3 && confidence >= 0.5)
+        } else {
+            // For non-200 status codes, be more aggressive
+            if self.common_status_codes.contains(&resp.status_code) {
+                confidence += 0.6;
             }
+            confidence >= 0.5 || match_count >= 2
         }
-
-        if let Some((min, max)) = self.html_tag_count_range {
-            if resp.html_tag_count >= min && resp.html_tag_count <= max {
-                return true;
-            }
-        }
-
-        false
     }
 }
 
@@ -239,7 +247,12 @@ impl WildcardSample {
         // Hashing the full body is slow. We only hash a small sample for performance.
         const HASH_SAMPLE_SIZE: usize = 1024;
         let sample = if body.len() > HASH_SAMPLE_SIZE {
-            &body[..HASH_SAMPLE_SIZE]
+            // Find the nearest character boundary at or before HASH_SAMPLE_SIZE
+            let mut end_index = HASH_SAMPLE_SIZE;
+            while end_index > 0 && !body.is_char_boundary(end_index) {
+                end_index -= 1;
+            }
+            &body[..end_index]
         } else {
             body
         };
@@ -265,7 +278,6 @@ impl WildcardSample {
         }
     }
 }
-
 /// Computes the SHA256 hash of a string and returns it as a hex string.
 fn sha256_hex(content: &str) -> String {
     let mut hasher = Sha256::new();
