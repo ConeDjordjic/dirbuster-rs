@@ -5,7 +5,7 @@
 //! This module builds a profile of what a "not found" page looks like by making requests
 //! to known non-existent paths, and then compares subsequent responses against this profile.
 
-use crate::ScanConfig;
+use crate::buster::ScanConfig;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -99,7 +99,7 @@ impl WildcardProfile {
     }
 
     /// Merges a new min/max pair into a vector of ranges.
-    fn merge_range(ranges: &mut Vec<(usize, usize)>, min: usize, max: usize) {
+    pub fn merge_range(ranges: &mut Vec<(usize, usize)>, min: usize, max: usize) {
         let mut merged = false;
         for (rmin, rmax) in ranges.iter_mut() {
             // This is the simplified condition for checking if two ranges overlap.
