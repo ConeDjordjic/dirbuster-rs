@@ -6,6 +6,8 @@ A fast, concurrent, and feature-rich directory and file buster written in Rust.
 
 ![dirbuster-rs in action](demo.gif)
 
+*This isn't sped up footage, promise*
+
 ## Features
 
 - **High Performance**: Multi-threaded scanning with configurable concurrency
