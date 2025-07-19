@@ -73,8 +73,6 @@ dirbuster-rs -u https://example.com -w wordlist.txt --proxy http://127.0.0.1:808
 | `--detect-wildcards`      | Enable wildcard response detection                  |
 | `--output-file`           | Save results to file                                |
 | `--output-format`         | Output format: text, json, xml, csv (default: text) |
-| `--resume`                | Resume scan from saved state file                   |
-| `--save-state`            | Save scan progress to file                          |
 | `--rotate-user-agent`     | Rotate User-Agent headers                           |
 | `--rotate-ip-headers`     | Rotate IP-related headers                           |
 | `--delay-min/--delay-max` | Request delay range in milliseconds                 |
