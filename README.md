@@ -1,12 +1,12 @@
 # dirbuster-rs
 
-A fast, concurrent, and feature-rich directory and file buster written in Rust.
+A fast, concurrent, and feature-rich directory file buster written in Rust.
 
 ## Demo
 
 ![dirbuster-rs in action](demo.gif)
 
-*This isn't sped up footage, promise*
+_This isn't sped up footage, promise_
 
 ## Features
 
